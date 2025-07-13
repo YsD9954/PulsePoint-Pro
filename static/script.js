@@ -11,7 +11,7 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   document.getElementById('resultContainer').style.display = 'none';
 
   try {
-    const response = await fetch('/predict', {
+      const response = await fetch('https://pulsepoint-backend.onrender.com/predict', {
       method: 'POST',
       body: formData
     });
