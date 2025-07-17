@@ -11,7 +11,7 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   document.getElementById('resultContainer').style.display = 'none';
 
   try {
-      const response = await fetch('https://pulsepoint-backend.onrender.com/predict', {
+    const response = await fetch('/predict', {
       method: 'POST',
       body: formData
     });
@@ -95,29 +95,4 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   } finally {
     document.getElementById('loader').style.display = 'none';
   }
-
-
-
-  // Handle CSV download
-document.getElementById('downloadBtn').addEventListener('click', () => {
-  const rows = [["Date", "Commits", "Messages", "Tickets Closed", "Status"]];
-  const tableRows = document.querySelectorAll('#resultsTable tbody tr');
-
-  tableRows.forEach(tr => {
-    const cells = Array.from(tr.children).map(td => td.textContent.trim());
-    rows.push(cells);
-  });
-
-  let csvContent = "data:text/csv;charset=utf-8," 
-    + rows.map(e => e.join(",")).join("\n");
-
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", "pulsepoint_results.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-});
-
 });
