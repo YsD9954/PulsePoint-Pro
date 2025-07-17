@@ -2,29 +2,137 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>PulsePoint Pro – Team Risk Analyzer</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <title>Sahayak Plus | Team Risk Insight</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+      color: #fff;
+    }
+
+    header {
+      background-color: #00000088;
+      padding: 20px;
+      text-align: center;
+    }
+
+    header img {
+      height: 50px;
+      vertical-align: middle;
+    }
+
+    header h1 {
+      display: inline;
+      margin-left: 15px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.2rem;
+      vertical-align: middle;
+    }
+
+    .intro {
+      text-align: center;
+      margin-top: 60px;
+      animation: fadeIn 2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+
+    .upload-box {
+      background-color: #1f2c3e;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .upload-box input[type="file"] {
+      padding: 10px;
+      border-radius: 4px;
+      border: none;
+    }
+
+    .upload-box button {
+      background-color: #00bcd4;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      margin-left: 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 40px;
+      background-color: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: center;
+      border-bottom: 1px solid #334155;
+    }
+
+    th {
+      background-color: #0f172a;
+      color: #f1f5f9;
+    }
+
+    .status-stable { color: #22c55e; font-weight: bold; }
+    .status-risk { color: #ef4444; font-weight: bold; }
+
+    canvas {
+      background-color: #1e293b;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    #fileNameDisplay {
+      color: #ccc;
+      margin-top: 10px;
+      font-style: italic;
+    }
+  </style>
 </head>
 <body>
+  <header>
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" />
+    <h1>Sahayak Plus</h1>
+  </header>
+
+  <div class="intro">
+    <h2>🚀 Empowering Teams with Smart Risk Analysis</h2>
+    <p>Upload your team activity to get AI-driven risk insights instantly.</p>
+  </div>
+
   <div class="container">
-    <h1>🚨 PulsePoint Pro</h1>
-    <p>Upload your team performance CSV to analyze risk levels based on productivity indicators.</p>
-
-    <form id="uploadForm">
-      <input type="file" id="csvFile" name="csv_file" accept=".csv" required />
-      <button type="submit">🔍 Analyze Team</button>
-    </form>
-
-    <div id="loader" style="display:none;">
-      <p>⏳ Analyzing... please wait</p>
-      <div class="spinner"></div>
+    <div class="upload-box">
+      <form id="uploadForm">
+        <input type="file" id="csvFile" name="csv_file" required />
+        <button type="submit">📊 Analyze Team</button>
+        <div id="fileNameDisplay"></div>
+      </form>
     </div>
 
-    <div id="resultContainer" style="display: none;">
-      <canvas id="activityChart" height="150"></canvas>
-
-      <h2>📊 Prediction Results</h2>
+    <div id="resultContainer" style="display:none;">
+      <h2 style="text-align:center;">📑 Risk Analysis Result</h2>
       <table id="resultsTable">
         <thead>
           <tr>
@@ -37,12 +145,111 @@
         </thead>
         <tbody></tbody>
       </table>
-      
-      <button id="downloadBtn" style="margin-top: 20px;">⬇️ Download Results as CSV</button>
 
+      <canvas id="activityChart" height="120"></canvas>
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script>
+    document.getElementById('csvFile').addEventListener('change', function() {
+      const fileName = this.files[0]?.name || 'No file chosen';
+      document.getElementById('fileNameDisplay').textContent = `Selected: ${fileName}`;
+    });
+
+    document.getElementById('uploadForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('csvFile');
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append('csv_file', file);
+
+      try {
+        const response = await fetch('/predict', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) throw new Error("Server error");
+
+        const data = await response.json();
+        if (!Array.isArray(data) || data.length === 0) throw new Error("No data received");
+
+        const tableBody = document.querySelector('#resultsTable tbody');
+        tableBody.innerHTML = '';
+        data.forEach(row => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${row.date || '-'}</td>
+            <td>${row.commits}</td>
+            <td>${row.messages}</td>
+            <td>${row.tickets_closed}</td>
+            <td class="${row.at_risk === 1 ? 'status-risk' : 'status-stable'}">
+              ${row.at_risk === 1 ? '🔴 At-Risk' : '🟢 Stable'}
+            </td>
+          `;
+          tableBody.appendChild(tr);
+        });
+
+        const labels = data.map(row => row.date || '-');
+        const commits = data.map(row => Number(row.commits));
+        const messages = data.map(row => Number(row.messages));
+
+        if (window.activityChart instanceof Chart) window.activityChart.destroy();
+
+        const ctx = document.getElementById('activityChart').getContext('2d');
+        window.activityChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Commits',
+                data: commits,
+                backgroundColor: '#3b82f6'
+              },
+              {
+                label: 'Messages',
+                data: messages,
+                backgroundColor: '#10b981'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: {
+                  color: '#f3f4f6',
+                  font: { size: 13, weight: 'bold' }
+                }
+              },
+              title: {
+                display: true,
+                text: '📈 Team Activity Chart',
+                color: '#e2e8f0',
+                font: { size: 18, weight: 'bold' }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: '#e2e8f0' },
+                grid: { color: '#334155' }
+              },
+              y: {
+                ticks: { color: '#e2e8f0' },
+                grid: { color: '#334155' }
+              }
+            }
+          }
+        });
+
+        document.getElementById('resultContainer').style.display = 'block';
+
+      } catch (err) {
+        alert("❌ " + err.message);
+      }
+    });
+  </script>
 </body>
 </html>

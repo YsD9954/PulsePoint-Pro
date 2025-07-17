@@ -6,7 +6,6 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   const formData = new FormData();
   formData.append('csv_file', file);
 
-  // Show loader, hide result
   document.getElementById('loader').style.display = 'block';
   document.getElementById('resultContainer').style.display = 'none';
 
@@ -22,36 +21,34 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
 
     const data = await response.json();
 
-    // Validate data
     if (!Array.isArray(data) || data.length === 0) {
       throw new Error("No prediction data received.");
     }
 
-    // Update table
-    const tableBody = document.querySelector('#resultsTable tbody');
+    const tableBody = document.getElementById('resultsTableBody');
     tableBody.innerHTML = '';
 
     data.forEach((row, i) => {
-      const dateDisplay = row.date ? row.date : `Row ${i + 1}`;
+      const dateDisplay = row.date || '-';
+      const statusHTML = row.at_risk === 1
+        ? '<span class="text-red-600 font-bold">🔴 At-Risk</span>'
+        : '<span class="text-green-600 font-bold">🟢 Stable</span>';
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${dateDisplay}</td>
-        <td>${row.commits}</td>
-        <td>${row.messages}</td>
-        <td>${row.tickets_closed}</td>
-        <td class="${row.at_risk === 1 ? 'at-risk' : 'stable'}">
-          ${row.at_risk === 1 ? '🔴 At-Risk' : '🟢 Stable'}
-        </td>
+        <td class="p-2 border">${dateDisplay}</td>
+        <td class="p-2 border">${row.commits}</td>
+        <td class="p-2 border">${row.messages}</td>
+        <td class="p-2 border">${row.tickets_closed}</td>
+        <td class="p-2 border">${statusHTML}</td>
       `;
       tableBody.appendChild(tr);
     });
 
-    // Setup chart
-    const labels = data.map((row, i) => row.date || `Row ${i + 1}`);
+    const labels = data.map(row => row.date || '-');
     const commits = data.map(row => Number(row.commits));
     const messages = data.map(row => Number(row.messages));
 
-    // Destroy previous chart if it exists
     if (window.activityChart instanceof Chart) {
       window.activityChart.destroy();
     }
@@ -65,12 +62,12 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
           {
             label: 'Commits',
             data: commits,
-            backgroundColor: '#3498db'
+            backgroundColor: '#3B82F6'
           },
           {
             label: 'Messages',
             data: messages,
-            backgroundColor: '#2ecc71'
+            backgroundColor: '#10B981'
           }
         ]
       },
@@ -86,7 +83,6 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
       }
     });
 
-    // Show result section
     document.getElementById('resultContainer').style.display = 'block';
 
   } catch (error) {

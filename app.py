@@ -5,9 +5,9 @@ import os
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.config['PROPAGATE_EXCEPTIONS'] = True  # Show internal errors if any
+app.config['PROPAGATE_EXCEPTIONS'] = True
 
-# Load model once
+# Load model
 model = joblib.load('ml/team_risk_model.pkl')
 
 @app.route('/')
@@ -17,7 +17,6 @@ def index():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # File check
         if 'csv_file' not in request.files:
             return jsonify({'error': 'No file uploaded'}), 400
 
@@ -26,35 +25,32 @@ def predict():
         filepath = os.path.join('data', filename)
         file.save(filepath)
 
-        # Load CSV
+        # Read CSV
         df = pd.read_csv(filepath)
 
-        # Feature check
+        # Required columns
         required_cols = ['commits', 'messages', 'tickets_closed']
         for col in required_cols:
             if col not in df.columns:
                 return jsonify({'error': f'Missing column: {col}'}), 400
 
-        # Optional: handle missing 'date'
+        # Optional date column
         if 'date' in df.columns:
-            df['date'] = df['date'].astype(str)
+            df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.strftime('%Y-%m-%d')
+        else:
+            df['date'] = [f'Row {i+1}' for i in range(len(df))]
 
-        # Predict
+        # Prediction
         X = df[['commits', 'messages', 'tickets_closed']]
         predictions = model.predict(X)
         df['at_risk'] = predictions
 
-        # Return JSON
-        result = df.to_dict(orient='records')
-        print("✅ Prediction result:", result)  # for debugging
+        # Prepare final result
+        result = df[['date', 'commits', 'messages', 'tickets_closed', 'at_risk']].to_dict(orient='records')
         return jsonify(result)
 
     except Exception as e:
-        print("🔥 Server error:", str(e))
         return jsonify({'error': str(e)}), 500
-
-# if __name__ == '__main__':
-#     app.run(debug=True)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
